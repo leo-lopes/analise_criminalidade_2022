@@ -1,0 +1,41 @@
+import pandas as pd
+import requests
+from bs4 import BeautifulSoup
+import os
+import re
+
+headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "Connection": "keep-alive"
+}
+
+def scrape_fbref_team_stats(url, team_name, season):
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        raise Exception(f"Erro ao acessar {url} (Status {response.status_code})")
+    
+    html_text = response.text
+    
+    # Remove comentários que escondem tabelas
+    cleaned_html = re.sub(r'<!--', '', html_text)
+    cleaned_html = re.sub(r'-->', '', cleaned_html)
+    
+    all_tables = pd.read_html(cleaned_html)
+
+    os.makedirs("../data/raw", exist_ok=True)
+
+    for i, table in enumerate(all_tables):
+        file_name = f"../data/raw/fbref_{team_name}_{season}_table_{i+1}.csv"
+        table.to_csv(file_name, index=False)
+        print(f"Tabela {i+1} salva em {file_name}")
+
+# URLs da temporada 2018/2019
+url_city = "https://fbref.com/en/squads/b8fd03ef/2018-2019/all_comps/Manchester-City-Stats-All-Competitions"
+url_liverpool = "https://fbref.com/en/squads/822bd0ba/2018-2019/all_comps/Liverpool-Stats-All-Competitions"
+
+# Coleta
+scrape_fbref_team_stats(url_city, "city", "1819")
+scrape_fbref_team_stats(url_liverpool, "liverpool", "1819")
